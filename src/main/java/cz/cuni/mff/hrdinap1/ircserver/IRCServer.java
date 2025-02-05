@@ -6,24 +6,14 @@ import java.util.List;
 import java.util.Map;
 
 public class IRCServer {
-    private class User {
-        public String nickname;
-        public String username;
-        public String hostname;
-        public String servername;
-        public String realname;
 
-        public boolean registered;
-    }
     // map of connId and nickname
     private final ConnectionManager connectionManager;
-    private Map<Integer, User> connToUser;
-    private Map<String, User> nickToUser;
+    private final UserManager userManager;
 
     public IRCServer() {
         this.connectionManager = new ConnectionManager();
-        this.connToUser = new HashMap<>();
-        this.nickToUser = new HashMap<>();
+        this.userManager = new UserManager();
     }
 
     public ConnectionHandler createHandler(Socket socket) {
@@ -31,34 +21,14 @@ public class IRCServer {
     }
 
     public void connect(int connId) {
-        connToUser.put(connId, new User());
+        userManager.addUser(connId);
     }
 
     public void disconnect(int connId) {
         // todo maybe pair with quit, kill,...
         connectionManager.removeHandler(connId);
+        userManager.removeUser(connId);
         // todo remove user with connection - cleanup
-    }
-
-    private boolean nicknameInUse(String nickname) { return nickToUser.containsKey(nickname) && nickToUser.get(nickname).nickname != null; }
-    private boolean userHasNickname(int connId) {
-        return connToUser.containsKey(connId) && connToUser.get(connId).nickname != null;
-    }
-    private boolean userHasUsername(int connId) { return connToUser.containsKey(connId) && connToUser.get(connId).username != null; }
-    // todo move user logic to UserManager
-
-    private void changeNickname(int connId, String newNickname) {
-        User user = connToUser.get(connId);
-        String oldNickname = user.nickname;
-        user.nickname = newNickname;
-        nickToUser.remove(oldNickname);
-        nickToUser.put(newNickname, user);
-    }
-
-    private void setNickname(int connId, String newNickname) {
-        User user = connToUser.get(connId);
-        user.nickname = newNickname;
-        nickToUser.put(newNickname, user);
     }
 
     public void cmdNick(List<String> parameters, int connId) {
@@ -70,26 +40,14 @@ public class IRCServer {
         String nickname = parameters.getFirst();
         assert !nickname.isEmpty();
 
-        if (nicknameInUse(nickname)) {
+        if (userManager.nicknameInUse(nickname)) {
             // send ERR_NICKNAMEINUSE
             return;
         }
 
-        if (userHasNickname(connId)) {
-            changeNickname(connId, nickname);
-        } else {
-            setNickname(connId, nickname);
-        }
+        userManager.setNickname(connId, nickname);
 
         System.out.println("Paired connection " + connId + " to nickname " + nickname);
-    }
-
-    private void setUserDetails(int connId, String username, String hostname, String servername, String realname) {
-        User user = connToUser.get(connId);
-        user.username = username;
-        user.hostname = hostname;
-        user.servername = servername;
-        user.realname = realname;
     }
 
     public void cmdUser(List<String> parameters, int connId) {
@@ -98,7 +56,7 @@ public class IRCServer {
             return;
         }
 
-        if (userHasUsername(connId)) {
+        if (userManager.userHasUsername(connId)) {
             // send ERR_ALREADYREGISTRED
             return;
         }
@@ -114,7 +72,7 @@ public class IRCServer {
         }
 
         realname = realname.substring(1);
-        setUserDetails(connId, username, hostname, servername, realname);
+        userManager.setUserDetails(connId, username, hostname, servername, realname);
         System.out.println("Paired connection " + connId + " to username " + username);
     }
 }
