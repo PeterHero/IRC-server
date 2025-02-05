@@ -5,13 +5,18 @@ import java.util.Map;
 
 public class UserManager {
     private class User {
+        public int connId;
         public String nickname;
         public String username;
         public String hostname;
         public String servername;
         public String realname;
 
-        public boolean registered;
+        public boolean registered; // todo set registered and check it with every command
+
+        public User(int connId) {
+            this.connId = connId;
+        }
     }
 
     private final Map<Integer, User> connToUser;
@@ -28,8 +33,13 @@ public class UserManager {
     }
     public boolean userHasUsername(int connId) { return connToUser.containsKey(connId) && connToUser.get(connId).username != null; }
 
+    public int getConnId(String nickname) {
+        return nickToUser.get(nickname).connId;
+    }
+
     public void addUser(int connId) {
-        connToUser.put(connId, new User());
+        connToUser.put(connId, new User(connId));
+
     }
 
     public void removeUser(int connId) {

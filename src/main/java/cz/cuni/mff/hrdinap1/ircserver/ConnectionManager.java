@@ -21,4 +21,10 @@ public class ConnectionManager {
     public void removeHandler(int connId) {
         openedConnections.remove(connId);
     }
+
+    public void sendMessage(int connId, String message) {
+        if (openedConnections.containsKey(connId)) {
+            openedConnections.get(connId).sendMessage(message);
+        }
+    }
 }
