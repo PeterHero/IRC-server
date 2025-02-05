@@ -15,11 +15,14 @@ public class ConnectionHandler implements Runnable {
         this.socket = connection;
         this.connId = connId;
         this.server = server;
+        server.connect(connId);
     }
 
     private void callCommand(String cmd, List<String> parameters) {
         if ("NICK".equals(cmd)) {
             server.cmdNick(parameters, connId);
+        } else if ("USER".equals(cmd)) {
+            server.cmdUser(parameters, connId);
         }
     }
 
