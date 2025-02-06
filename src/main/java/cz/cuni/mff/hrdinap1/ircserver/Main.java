@@ -8,7 +8,7 @@ import java.util.concurrent.Executors;
 public class Main {
     public static void main(String[] args) {
         int serverPort = 6667;
-        IRCServer server = new IRCServer();
+        IRCServer server = new IRCServer("mff.testing.cz");
 
         try (ServerSocket s = new ServerSocket(serverPort)) {
             try (var executor = Executors.newWorkStealingPool()) {

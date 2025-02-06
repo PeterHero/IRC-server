@@ -1,7 +1,9 @@
 package cz.cuni.mff.hrdinap1.ircserver;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class UserManager {
     private class User {
@@ -56,6 +58,14 @@ public class UserManager {
             return null;
         }
         return connToUser.get(connId).username;
+    }
+
+    public Set<String> getNicknames(Set<Integer> connIds) {
+        Set<String> nicknames = new HashSet<>();
+        for (int connId: connIds) {
+            nicknames.add(getNickname(connId));
+        }
+        return nicknames;
     }
 
     public void setNickname(int connId, String newNickname) {

@@ -6,15 +6,18 @@ import static cz.cuni.mff.hrdinap1.ircserver.Numerics.*;
 
 public class IRCServer {
     public static final char channelPrefix = '#';
+    public static final char publicChannelSymbol = '=';
 
     private final ChannelManager channelManager;
     private final ConnectionManager connectionManager;
     private final UserManager userManager;
+    private final String serverName;
 
-    public IRCServer() {
+    public IRCServer(String serverName) {
         this.channelManager = new ChannelManager();
         this.connectionManager = new ConnectionManager();
         this.userManager = new UserManager();
+        this.serverName = serverName;
     }
 
     public ConnectionHandler createHandler(Socket socket) {
@@ -29,11 +32,11 @@ public class IRCServer {
         // todo maybe pair with quit, kill,...
         connectionManager.removeHandler(connId);
         userManager.removeUser(connId);
-        // todo remove user with connection - cleanup
+        channelManager.removeUser(connId);
     }
 
-    public void sendReply(int targetConnId, String source, int replyNumber, String target, String message) {
-        String completeMessage = ":" + source + " " + replyNumber + " " + target + " " + message;
+    public void sendReply(int targetConnId, int replyNumber, String message) {
+        String completeMessage = ":" + serverName + " " + replyNumber + " " + userManager.getNickname(targetConnId) + " " + message;
         connectionManager.sendMessage(targetConnId, completeMessage);
     }
 
@@ -49,27 +52,17 @@ public class IRCServer {
 
     public void sendMessage(String target, String source, String command, String parameters) {
         if (target.charAt(0) == channelPrefix) {
-            if (channelManager.channelExists(target)) {
-                for (int userConnId: channelManager.getChannelUsers(target)) {
-                    if (userConnId != userManager.getConnId(source)) {
-                        sendMessage(userConnId, source, command, parameters);
-                    }
+            assert channelManager.channelExists(target);
+            for (int userConnId: channelManager.getChannelUsers(target)) {
+                if (userConnId != userManager.getConnId(source)) {
+                    sendMessage(userConnId, source, command, parameters);
                 }
-            } else {
-                // send ERR_CANNOTSENDTOCHAN
             }
         } else {
-            if (userManager.userIsRegistered(target)) {
-                sendMessage(userManager.getConnId(target), source, command, parameters);
-            } else {
-                // send ERR_NOSUCHNICK
-            }
+            assert userManager.userIsRegistered(target);
+            sendMessage(userManager.getConnId(target), source, command, parameters);
         }
     }
-
-    // public void sendMessageToChannel()
-
-    // send mess to channel
 
     private List<String> splitBy(String string, String delimiter) {
         return Arrays.stream(string.split(delimiter)).toList();
@@ -79,9 +72,15 @@ public class IRCServer {
         return String.join(delimiter, list.subList(from, list.size()));
     }
 
+    private String getChannelUsers(String channel) {
+        Set<Integer> connIds = channelManager.getChannelUsers(channel);
+        Set<String> nicknames = userManager.getNicknames(connIds);
+        return joinBy(nicknames.stream().toList(), " ", 0);
+    }
+
     public void cmdNick(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
-            // send ERR_NONICKNAMEGIVEN
+            sendReply(connId, ERR_NONICKNAMEGIVEN, ":No nickname given");
             return;
         }
 
@@ -89,12 +88,12 @@ public class IRCServer {
         assert !nickname.isEmpty();
 
         if (nickname.charAt(0) == channelPrefix || nickname.charAt(0) == ':' || nickname.contains(" ")) {
-            // send ERR_ERRONEUSNICKNAME
+            sendReply(connId, ERR_ERRONEUSNICKNAME, nickname + " :Erroneus nickname");
             return;
         }
 
         if (userManager.nicknameInUse(nickname)) {
-            // send ERR_NICKNAMEINUSE
+            sendReply(connId, ERR_NICKNAMEINUSE, nickname + ":Nickname is already in use");
             return;
         }
 
@@ -105,12 +104,12 @@ public class IRCServer {
 
     public void cmdUser(List<String> parameters, int connId) {
         if (parameters.size() < 4) {
-            // send ERR_NEEDMOREPARAMS
+            sendReply(connId, ERR_NEEDMOREPARAMS, "USER :Not enough parameters");
             return;
         }
 
         if (userManager.userHasUsername(connId)) {
-            // send ERR_ALREADYREGISTRED
+            sendReply(connId, ERR_ALREADYREGISTERED, ":You may not reregister");
             return;
         }
 
@@ -131,7 +130,7 @@ public class IRCServer {
 
     public void cmdJoin(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
-            // send ERR_NEEDMOREPARAMS
+            sendReply(connId, ERR_NEEDMOREPARAMS, "JOIN :Not enough parameters");
             return;
         }
 
@@ -143,15 +142,20 @@ public class IRCServer {
         }
 
         for (String channel: channels) {
+            if (channel.charAt(0) != channelPrefix) {
+                sendReply(connId, ERR_BADCHANMASK, ":Bad Channel Mask");
+                continue;
+            }
             channelManager.join(connId, channel, null);
             sendMessage(channel, userManager.getNickname(connId), "JOIN", channel);
-            // send RPL with list of users
+            sendReply(connId, RPL_NAMREPLY, publicChannelSymbol + " " + channel + " :" + getChannelUsers(channel));
+            sendReply(connId, RPL_ENDOFNAMES, channel + " :End of /NAMES list");
         }
     }
 
     public void cmdPrivmsg(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
-            // send ERR_NORECIPIENT
+            sendReply(connId, ERR_NORECIPIENT, ":No recipient given (PRIVMSG)");
             return;
         }
 
@@ -160,7 +164,13 @@ public class IRCServer {
         String nickname = userManager.getNickname(connId);
 
         for (String target: targets) {
-            sendMessage(target, nickname, "PRIVMSG", target + " " + message);
+            if (target.charAt(0) == channelPrefix && !channelManager.channelExists(target)) {
+                sendReply(connId, ERR_NOSUCHNICK, target + " :No such nick/channel");
+            } else if (target.charAt(0) != channelPrefix && !userManager.userIsRegistered(target)) {
+                sendReply(connId, ERR_NOSUCHNICK, target + " :No such nick/channel");
+            } else {
+                sendMessage(target, nickname, "PRIVMSG", target + " " + message);
+            }
         }
     }
 }

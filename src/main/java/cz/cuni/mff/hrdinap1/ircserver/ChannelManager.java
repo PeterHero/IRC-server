@@ -25,8 +25,10 @@ public class ChannelManager {
             if (!users.containsKey(connId)) {
                 users.put(connId, new ChannelUser(connId));
             }
-            // todo send join message to channel
-            // todo send reply list of users
+        }
+
+        public void quit(int connId) {
+            users.remove(connId);
         }
 
         public void setOperator(int connId) {
@@ -40,6 +42,7 @@ public class ChannelManager {
         public Set<Integer> getUsers() {
             return users.keySet();
         }
+
     }
 
     private final Map<String, Channel> nameToChann;
@@ -73,6 +76,12 @@ public class ChannelManager {
             getChannel(channel).join(connId);
         } else {
             addChannel(channel, connId);
+        }
+    }
+
+    public void removeUser(int connId) {
+        for (Channel channel: nameToChann.values()) {
+            channel.quit(connId);
         }
     }
 }
