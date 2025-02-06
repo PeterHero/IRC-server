@@ -32,6 +32,8 @@ public class UserManager {
         return connToUser.containsKey(connId) && connToUser.get(connId).nickname != null;
     }
     public boolean userHasUsername(int connId) { return connToUser.containsKey(connId) && connToUser.get(connId).username != null; }
+    public boolean userIsRegistered(int connId) { return connToUser.containsKey(connId) && connToUser.get(connId).registered; }
+    public boolean userIsRegistered(String nickname) { return nickToUser.containsKey(nickname) && nickToUser.get(nickname).registered; }
 
     public int getConnId(String nickname) {
         return nickToUser.get(nickname).connId;
@@ -64,6 +66,9 @@ public class UserManager {
 
         user.nickname = newNickname;
         nickToUser.put(newNickname, user);
+        if (userHasUsername(connId)) {
+            user.registered = true;
+        }
     }
 
     public void setUserDetails(int connId, String username, String hostname, String servername, String realname) {
@@ -72,5 +77,9 @@ public class UserManager {
         user.hostname = hostname;
         user.servername = servername;
         user.realname = realname;
+
+        if (userHasNickname(connId)) {
+            user.registered = true;
+        }
     }
 }

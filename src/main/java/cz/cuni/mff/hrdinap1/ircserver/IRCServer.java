@@ -2,7 +2,7 @@ package cz.cuni.mff.hrdinap1.ircserver;
 
 import java.net.Socket;
 import java.util.*;
-import java.util.regex.Pattern;
+import static cz.cuni.mff.hrdinap1.ircserver.Numerics.*;
 
 public class IRCServer {
     public static final char channelPrefix = '#';
@@ -37,14 +37,34 @@ public class IRCServer {
         connectionManager.sendMessage(targetConnId, completeMessage);
     }
 
-    public void sendMessage(int targetConnId, String source, String command, String target, String message) {
+    private void sendMessage(int targetConnId, String source, String command, String parameters) {
         String completeMessage;
-        if (message == null) {
-            completeMessage = ":" + source + " " + command + " " + target;
+        if (parameters == null) {
+            completeMessage = ":" + source + " " + command;
         } else {
-            completeMessage = ":" + source + " " + command + " " + target + " " + message;
+            completeMessage = ":" + source + " " + command + " " + parameters;
         }
         connectionManager.sendMessage(targetConnId, completeMessage);
+    }
+
+    public void sendMessage(String target, String source, String command, String parameters) {
+        if (target.charAt(0) == channelPrefix) {
+            if (channelManager.channelExists(target)) {
+                for (int userConnId: channelManager.getChannelUsers(target)) {
+                    if (userConnId != userManager.getConnId(source)) {
+                        sendMessage(userConnId, source, command, parameters);
+                    }
+                }
+            } else {
+                // send ERR_CANNOTSENDTOCHAN
+            }
+        } else {
+            if (userManager.userIsRegistered(target)) {
+                sendMessage(userManager.getConnId(target), source, command, parameters);
+            } else {
+                // send ERR_NOSUCHNICK
+            }
+        }
     }
 
     // public void sendMessageToChannel()
@@ -122,8 +142,11 @@ public class IRCServer {
             keys = splitBy(parameters.get(1), ",");
         }
 
-        // todo call channel manager... and figure out responsibilities... prevent inversion
-
+        for (String channel: channels) {
+            channelManager.join(connId, channel, null);
+            sendMessage(channel, userManager.getNickname(connId), "JOIN", channel);
+            // send RPL with list of users
+        }
     }
 
     public void cmdPrivmsg(List<String> parameters, int connId) {
@@ -137,24 +160,7 @@ public class IRCServer {
         String nickname = userManager.getNickname(connId);
 
         for (String target: targets) {
-            if (target.charAt(0) == channelPrefix) {
-                if (channelManager.channelExists(target)) {
-                    for (int userConnId: channelManager.getChannelUsers(target)) {
-                        sendMessage(userConnId, nickname, "PRIVMSG", userManager.getNickname(userConnId), message);
-                    }
-                } else {
-                    // send ERR_CANNOTSENDTOCHAN
-                }
-                // todo send message to channel
-            } else {
-                if (userManager.nicknameInUse(target)) {
-                    sendMessage(userManager.getConnId(target), nickname, "PRIVMSG", target, message);
-                } else {
-                    // send ERR_NOSUCHNICK
-                }
-                // todo send message to user
-            }
+            sendMessage(target, nickname, "PRIVMSG", target + " " + message);
         }
-
     }
 }

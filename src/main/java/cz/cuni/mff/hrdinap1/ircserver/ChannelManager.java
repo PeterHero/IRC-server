@@ -22,7 +22,9 @@ public class ChannelManager {
         }
 
         public void join(int connId) {
-            users.put(connId, new ChannelUser(connId));
+            if (!users.containsKey(connId)) {
+                users.put(connId, new ChannelUser(connId));
+            }
             // todo send join message to channel
             // todo send reply list of users
         }
