@@ -204,4 +204,21 @@ public class IRCServer {
             }
         }
     }
+
+    public void cmdNames(List<String> parameters, int connId) {
+        if (parameters.isEmpty()) {
+            // list all users, not implemented yet
+            return;
+        }
+
+        List<String> channels = splitBy(parameters.getFirst(), ",");
+        for (String channel: channels) {
+            if (channelManager.channelExists(channel)) {
+                sendReply(connId, RPL_NAMREPLY, publicChannelSymbol + " " + channel + " :" + getChannelUsers(channel));
+                sendReply(connId, RPL_ENDOFNAMES, channel + " :End of /NAMES list");
+            } else {
+                sendReply(connId, RPL_ENDOFNAMES, channel);
+            }
+        }
+    }
 }
