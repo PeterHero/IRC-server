@@ -4,9 +4,12 @@ public final class Numerics {
     public static final int RPL_LISTSTART = 321;
     public static final int RPL_LIST = 322;
     public static final int RPL_LISTEND = 323;
+    public static final int RPL_NOTOPIC = 331;
+    public static final int RPL_TOPIC = 332;
     public static final int RPL_NAMREPLY = 353;
     public static final int RPL_ENDOFNAMES = 366;
 
+    public static final int ERR_UNKNOWNERROR = 400;
     public static final int ERR_NOSUCHNICK = 401;
     public static final int ERR_NOSUCHCHANNEL = 403;
     public static final int ERR_CANNOTSENDTOCHAN = 404;

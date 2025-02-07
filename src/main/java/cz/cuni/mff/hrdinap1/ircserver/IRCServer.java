@@ -50,11 +50,11 @@ public class IRCServer {
         connectionManager.sendMessage(targetConnId, completeMessage);
     }
 
-    public void sendMessage(String target, String source, String command, String parameters) {
+    public void sendMessage(String target, String source, String command, String parameters, boolean includeSender) {
         if (target.charAt(0) == channelPrefix) {
             assert channelManager.channelExists(target);
             for (int userConnId: channelManager.getChannelUsers(target)) {
-                if (userConnId != userManager.getConnId(source)) {
+                if (includeSender || userConnId != userManager.getConnId(source)) {
                     sendMessage(userConnId, source, command, parameters);
                 }
             }
@@ -147,7 +147,9 @@ public class IRCServer {
                 continue;
             }
             channelManager.join(connId, channel, null);
-            sendMessage(channel, userManager.getNickname(connId), "JOIN", channel);
+            sendMessage(channel, userManager.getNickname(connId), "JOIN", channel, false);
+            if (channelManager.isTopicSet(channel))
+                sendReply(connId, RPL_TOPIC, channel + " :" + channelManager.getTopic(channel));
             sendReply(connId, RPL_NAMREPLY, publicChannelSymbol + " " + channel + " :" + getChannelUsers(channel));
             sendReply(connId, RPL_ENDOFNAMES, channel + " :End of /NAMES list");
         }
@@ -169,7 +171,7 @@ public class IRCServer {
             } else if (target.charAt(0) != channelPrefix && !userManager.userIsRegistered(target)) {
                 sendReply(connId, ERR_NOSUCHNICK, target + " :No such nick/channel");
             } else {
-                sendMessage(target, nickname, "PRIVMSG", target + " " + message);
+                sendMessage(target, nickname, "PRIVMSG", target + " " + message, false);
             }
         }
     }
@@ -191,11 +193,10 @@ public class IRCServer {
                 if (channelManager.isUserInChannel(connId, channel)) {
                     channelManager.leave(connId, channel);
                     if (reason != null) {
-                        sendMessage(channel, userManager.getNickname(connId), "PART", channel + " " + reason);
+                        sendMessage(channel, userManager.getNickname(connId), "PART", channel + " " + reason, false);
                     } else {
-                        sendMessage(channel, userManager.getNickname(connId), "PART", channel);
+                        sendMessage(channel, userManager.getNickname(connId), "PART", channel, false);
                     }
-                    // leave
                 } else {
                     sendReply(connId, ERR_NOTONCHANNEL, channel + " :You're not on that channel");
                 }
@@ -233,9 +234,44 @@ public class IRCServer {
         sendReply(connId, RPL_LISTSTART, "Channel :Users  Name");
         for (String channel: channels) {
             if (channelManager.channelExists(channel)) {
-                sendReply(connId, RPL_LIST, channel + " " + channelManager.getCount(channel) + " :<topic>");
+                sendReply(connId, RPL_LIST, channel + " " + channelManager.getCount(channel) + " :" + channelManager.getTopic(channel));
             }
         }
         sendReply(connId, RPL_LISTEND, ":End of /LIST");
+    }
+
+    public void cmdTopic(List<String> parameters, int connId) {
+        if (parameters.isEmpty()) {
+            sendReply(connId, ERR_NEEDMOREPARAMS, "TOPIC :Not enough parameters");
+            return;
+        }
+
+        String channel = parameters.getFirst();
+
+        if (parameters.size() == 1) {
+            if (channelManager.isTopicSet(channel)) {
+                sendReply(connId, RPL_TOPIC, channel + " :" + channelManager.getTopic(channel));
+            } else {
+                sendReply(connId, RPL_NOTOPIC, channel + " :No topic is set");
+            }
+        } else {
+            if (!channelManager.isUserInChannel(connId, channel)) {
+                sendReply(connId, ERR_NOTONCHANNEL, channel + " :You're not on that channel");
+                return;
+            }
+
+            String topic = joinBy(parameters, " ", 1);
+            if (topic.charAt(0) == ':') {
+                if (topic.length() == 1) {
+                    channelManager.clearTopic(channel);
+                    sendMessage(channel, userManager.getNickname(connId), "TOPIC", null, true);
+                } else {
+                    channelManager.setTopic(channel, topic.substring(1));
+                    sendMessage(channel, userManager.getNickname(connId), "TOPIC", topic, true);
+                }
+            } else {
+                sendReply(connId, ERR_UNKNOWNERROR, "TOPIC :missing colon for trailing parameter");
+            }
+        }
     }
 }

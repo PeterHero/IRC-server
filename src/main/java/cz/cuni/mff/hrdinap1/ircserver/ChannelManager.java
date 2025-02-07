@@ -15,6 +15,7 @@ public class ChannelManager {
 
     private class Channel {
         private final Map<Integer, ChannelUser> users;
+        String topic;
         // todo no external messages mode
 
         public Channel() {
@@ -49,6 +50,22 @@ public class ChannelManager {
 
         public int count() {
             return users.size();
+        }
+
+        public String getTopic() {
+            return topic;
+        }
+
+        public void setTopic(String newTopic) {
+            topic = newTopic;
+        }
+
+        public void clearTopic() {
+            topic = null;
+        }
+
+        public boolean isTopicSet() {
+            return topic != null;
         }
 
     }
@@ -109,6 +126,34 @@ public class ChannelManager {
     public void removeUser(int connId) {
         for (Channel channel: nameToChann.values()) {
             channel.quit(connId);
+        }
+    }
+
+    public boolean isTopicSet(String channel) {
+        if (channelExists(channel)) {
+            return getChannel(channel).isTopicSet();
+        } else {
+            return false;
+        }
+    }
+
+    public String getTopic(String channel) {
+        if (channelExists(channel)) {
+            return getChannel(channel).getTopic();
+        } else {
+            return "";
+        }
+    }
+
+    public void setTopic(String channel, String topic) {
+        if (channelExists(channel)) {
+            getChannel(channel).setTopic(topic);
+        }
+    }
+
+    public void clearTopic(String channel) {
+        if (channelExists(channel)) {
+            getChannel(channel).clearTopic();
         }
     }
 }
