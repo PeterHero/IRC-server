@@ -47,6 +47,10 @@ public class ChannelManager {
             return users.keySet();
         }
 
+        public int count() {
+            return users.size();
+        }
+
     }
 
     private final Map<String, Channel> nameToChann;
@@ -65,6 +69,10 @@ public class ChannelManager {
         nameToChann.put(channel, newChannel);
     }
 
+    public List<String> getChannels() {
+        return nameToChann.keySet().stream().toList();
+    }
+
     public boolean channelExists(String channel) { return nameToChann.containsKey(channel); }
     public boolean isUserInChannel(int connId, String channel) { return nameToChann.containsKey(channel) && nameToChann.get(channel).isJoined(connId); }
 
@@ -73,6 +81,14 @@ public class ChannelManager {
             return getChannel(channel).getUsers();
         } else {
             return new HashSet<>();
+        }
+    }
+
+    public int getCount(String channel) {
+        if (channelExists(channel)) {
+            return getChannel(channel).count();
+        } else {
+            return 0;
         }
     }
 
@@ -85,8 +101,8 @@ public class ChannelManager {
     }
 
     public void leave(int connId, String channel) {
-        if (nameToChann.containsKey(channel)) {
-            nameToChann.get(channel).quit(connId);
+        if (channelExists(channel)) {
+            getChannel(channel).quit(connId);
         }
     }
 

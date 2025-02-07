@@ -221,4 +221,21 @@ public class IRCServer {
             }
         }
     }
+
+    public void cmdList(List<String> parameters, int connId) {
+        List<String> channels;
+        if (parameters.isEmpty()) {
+            channels = channelManager.getChannels();
+        } else {
+            channels = splitBy(parameters.getFirst(), ",");
+        }
+
+        sendReply(connId, RPL_LISTSTART, "Channel :Users  Name");
+        for (String channel: channels) {
+            if (channelManager.channelExists(channel)) {
+                sendReply(connId, RPL_LIST, channel + " " + channelManager.getCount(channel) + " :<topic>");
+            }
+        }
+        sendReply(connId, RPL_LISTEND, ":End of /LIST");
+    }
 }

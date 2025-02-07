@@ -33,6 +33,8 @@ public class ConnectionHandler implements Runnable {
             server.cmdPart(parameters, connId);
         } else if ("NAMES".equals(cmd)) {
             server.cmdNames(parameters, connId);
+        } else if ("LIST".equals(cmd)) {
+            server.cmdList(parameters, connId);
         }
     }
 
