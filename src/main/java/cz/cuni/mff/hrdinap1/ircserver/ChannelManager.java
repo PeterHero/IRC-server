@@ -21,6 +21,10 @@ public class ChannelManager {
             this.users = new HashMap<>();
         }
 
+        public boolean isJoined(int connId) {
+            return users.containsKey(connId);
+        }
+
         public void join(int connId) {
             if (!users.containsKey(connId)) {
                 users.put(connId, new ChannelUser(connId));
@@ -62,6 +66,7 @@ public class ChannelManager {
     }
 
     public boolean channelExists(String channel) { return nameToChann.containsKey(channel); }
+    public boolean isUserInChannel(int connId, String channel) { return nameToChann.containsKey(channel) && nameToChann.get(channel).isJoined(connId); }
 
     public Set<Integer> getChannelUsers(String channel) {
         if (channelExists(channel)) {
@@ -76,6 +81,12 @@ public class ChannelManager {
             getChannel(channel).join(connId);
         } else {
             addChannel(channel, connId);
+        }
+    }
+
+    public void leave(int connId, String channel) {
+        if (nameToChann.containsKey(channel)) {
+            nameToChann.get(channel).quit(connId);
         }
     }
 

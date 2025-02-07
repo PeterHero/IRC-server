@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 public class ConnectionHandler implements Runnable {
     private final Socket socket;
@@ -28,6 +29,8 @@ public class ConnectionHandler implements Runnable {
             server.cmdJoin(parameters, connId);
         } else if ("PRIVMSG".equals(cmd)) {
             server.cmdPrivmsg(parameters, connId);
+        } else if ("PART".equals(cmd)) {
+            server.cmdPart(parameters, connId);
         }
     }
 
@@ -35,7 +38,7 @@ public class ConnectionHandler implements Runnable {
         // todo add :nick cmd option
 
         List<String> words = Arrays.stream(line.split("\\s+")).toList();
-        String cmd = words.getFirst();
+        String cmd = words.getFirst().toUpperCase(Locale.ROOT);
 
         System.out.println(line);
         callCommand(cmd, words.subList(1, words.size()));

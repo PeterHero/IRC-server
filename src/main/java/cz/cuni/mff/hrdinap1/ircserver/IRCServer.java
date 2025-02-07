@@ -173,4 +173,35 @@ public class IRCServer {
             }
         }
     }
+
+    public void cmdPart(List<String> parameters, int connId) {
+        if (parameters.isEmpty()) {
+            sendReply(connId, ERR_NEEDMOREPARAMS, "PART :Not enough parameters");
+            return;
+        }
+
+        List<String> channels = splitBy(parameters.getFirst(), ",");
+        String reason = null;
+        if (parameters.size() >= 2) {
+            reason = joinBy(parameters, " ", 1);
+        }
+
+        for (String channel: channels) {
+            if (channelManager.channelExists(channel)) {
+                if (channelManager.isUserInChannel(connId, channel)) {
+                    channelManager.leave(connId, channel);
+                    if (reason != null) {
+                        sendMessage(channel, userManager.getNickname(connId), "PART", channel + " " + reason);
+                    } else {
+                        sendMessage(channel, userManager.getNickname(connId), "PART", channel);
+                    }
+                    // leave
+                } else {
+                    sendReply(connId, ERR_NOTONCHANNEL, channel + " :You're not on that channel");
+                }
+            } else {
+                sendReply(connId, ERR_NOSUCHCHANNEL, channel + " :No such channel");
+            }
+        }
+    }
 }
