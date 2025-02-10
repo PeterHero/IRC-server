@@ -1,5 +1,7 @@
 package cz.cuni.mff.hrdinap1.ircserver;
 
+/** Class containing all numeric constants for message replies
+ */
 public final class Numerics {
     public static final int RPL_LISTSTART = 321;
     public static final int RPL_LIST = 322;

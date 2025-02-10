@@ -6,6 +6,9 @@ import java.net.Socket;
 import java.util.concurrent.Executors;
 
 public class Main {
+    /** Starts an IRC server and listens to connections
+     * @param args port number as optional first argument
+     */
     public static void main(String[] args) {
         int serverPort = 6667;
         if (args.length > 0) {

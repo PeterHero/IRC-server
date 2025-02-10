@@ -4,6 +4,9 @@ import java.net.Socket;
 import java.util.*;
 import static cz.cuni.mff.hrdinap1.ircserver.Numerics.*;
 
+/** Server servicing commands from users
+ * Divides the responsibility to channel, connection and user managers
+ */
 public class IRCServer {
     public static final char channelPrefix = '#';
     public static final char publicChannelSymbol = '=';
@@ -13,6 +16,10 @@ public class IRCServer {
     private final UserManager userManager;
     private final String serverName;
 
+    /** Server constructor
+     *
+     * @param serverName name used in server responses
+     */
     public IRCServer(String serverName) {
         this.channelManager = new ChannelManager();
         this.connectionManager = new ConnectionManager();
@@ -20,25 +27,47 @@ public class IRCServer {
         this.serverName = serverName;
     }
 
-    public ConnectionHandler createHandler(Socket socket) {
+    /** Factory method creating ConnectionHandler
+     * @param socket socket with the connected user
+     * @return new connection handler servicing the socket and connection
+     */
+    public synchronized ConnectionHandler createHandler(Socket socket) {
         return connectionManager.createHandler(socket, this);
     }
 
-    public void connect(int connId) {
+    /** Connect a new user to server
+     * @param connId id of the user's connection
+     */
+    public synchronized void connect(int connId) {
         userManager.addUser(connId);
     }
 
-    public void disconnect(int connId) {
+    /** Disconnect a user
+     * used for cleanup
+     * @param connId id of the user's connection
+     */
+    public synchronized void disconnect(int connId) {
         connectionManager.removeHandler(connId);
         userManager.removeUser(connId);
         channelManager.removeUser(connId);
     }
 
-    public void sendReply(int targetConnId, int replyNumber, String message) {
+    /** Send a formatted reply to user on a connection
+     * @param targetConnId id of the user's connection
+     * @param replyNumber numeric with the type of reply
+     * @param message text of the reply
+     */
+    private void sendReply(int targetConnId, int replyNumber, String message) {
         String completeMessage = ":" + serverName + " " + replyNumber + " " + userManager.getNickname(targetConnId) + " " + message;
         connectionManager.sendMessage(targetConnId, completeMessage);
     }
 
+    /** Send a formatted command message to user on a connection
+     * @param targetConnId id of the user's connection
+     * @param source original sender of the message
+     * @param command command to send
+     * @param parameters other parameters of the message
+     */
     private void sendMessage(int targetConnId, String source, String command, String parameters) {
         String completeMessage;
         if (parameters == null) {
@@ -49,7 +78,15 @@ public class IRCServer {
         connectionManager.sendMessage(targetConnId, completeMessage);
     }
 
-    public void sendMessage(String target, String source, String command, String parameters, boolean includeSender) {
+    /** Send a formatted command message to a nick/channel
+     * If the target is channel, sends the message to all its users
+     * @param target nickname or name of a channel
+     * @param source sender of the message
+     * @param command command to send
+     * @param parameters other parameters of the message
+     * @param includeSender if true and target is a channel the sender will also receive the message
+     */
+    private void sendMessage(String target, String source, String command, String parameters, boolean includeSender) {
         if (target.charAt(0) == channelPrefix) {
             assert channelManager.channelExists(target);
             for (int userConnId: channelManager.getChannelUsers(target)) {
@@ -63,21 +100,45 @@ public class IRCServer {
         }
     }
 
+    /** Splits a string by delimiter into list
+     * @param string String to split
+     * @param delimiter Delimiter to split by
+     * @return list of words after splitting
+     */
     private List<String> splitBy(String string, String delimiter) {
         return Arrays.stream(string.split(delimiter)).toList();
     }
 
+    /** Joins a list of words using delimiter
+     * @param list List of words to join
+     * @param delimiter String used as delimiter
+     * @param from Index in the list to start from
+     * @return String of words connected by delimiter
+     */
     private String joinBy(List<String> list, String delimiter, int from) {
         return String.join(delimiter, list.subList(from, list.size()));
     }
 
+    /** Get list of users in a channel
+     * @param channel Channel name
+     * @return list of users in channel divided by space
+     */
     private String getChannelUsers(String channel) {
         Set<Integer> connIds = channelManager.getChannelUsers(channel);
         Set<String> nicknames = userManager.getNicknames(connIds);
         return joinBy(nicknames.stream().toList(), " ", 0);
     }
 
-    public void cmdNick(List<String> parameters, int connId) {
+    /** Service NICK command message
+     * Set or change user nickname. Needed to register connection with USER command.
+     * Possible errors:
+     * ERR_NOCICKNAMEGIVEN - no nickname was given
+     * ERR_ERRONEUSNICKNAME - nickname is in incorrect format
+     * ERR_NICKNAMEINUSE - nickname is already used
+     * @param parameters &lt;nickname&gt;
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdNick(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NONICKNAMEGIVEN, ":No nickname given");
             return;
@@ -99,7 +160,16 @@ public class IRCServer {
         userManager.setNickname(connId, nickname);
     }
 
-    public void cmdUser(List<String> parameters, int connId) {
+    /** Service USER command message
+     * Set user details. Needed to register connection with NICK command.
+     * Possible errors:
+     * ERR_NEEDMOREPARAMS - not enough parameters were given
+     * ERR_ALREADYREGISTERED - USER command was already handled
+     * @param parameters &lt;username&gt; &lt;hostname&gt; &lt;servername&gt; &lt;realname&gt; - realname is a trailing
+     * parameter - multiple words, the first must start with a ':'
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdUser(List<String> parameters, int connId) {
         if (parameters.size() < 4) {
             sendReply(connId, ERR_NEEDMOREPARAMS, "USER :Not enough parameters");
             return;
@@ -124,7 +194,20 @@ public class IRCServer {
         userManager.setUserDetails(connId, username, hostname, servername, realname);
     }
 
-    public void cmdJoin(List<String> parameters, int connId) {
+    /** Service JOIN command message
+     * Joins user to channel. If the channel does not exist it is created with the user as an operator
+     * Possible errors:
+     * ERR_NEEDMOREPARAMS - not enough parameters were given
+     * ERR_BADCHANMASK - channel name in incorrect format
+     * Reply on success:
+     * RPL_TOPIC - channel topic if the topic is set
+     * RPL_NAMREPLY - list of users in the channel
+     * RPL_ENDOFNAMES - message signaling end of the list
+     *
+     * @param parameters &lt;channel&gt;{,&lt;channel&gt;} [&lt;key&gt;{,&lt;key&gt;}] - list of channels to join and their keys - keys are not used in this implementation
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdJoin(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NEEDMOREPARAMS, "JOIN :Not enough parameters");
             return;
@@ -151,7 +234,16 @@ public class IRCServer {
         }
     }
 
-    public void cmdPrivmsg(List<String> parameters, int connId) {
+    /** Service PRIVMSG command message
+     * The PRIVMSG command is used to send private messages between users, as well as to send messages to channels.
+     * &lt;target&gt; is the nickname of a client or the name of a channel.
+     * Possible errors:
+     * ERR_NORECIPIENT - no target given
+     * ERR_NOSUCHNICK - the target nick/channel does not exist
+     * @param parameters &lt;target&gt;{,&lt;target&gt;} &lt;text to be sent&gt;
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdPrivmsg(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NORECIPIENT, ":No recipient given (PRIVMSG)");
             return;
@@ -172,7 +264,18 @@ public class IRCServer {
         }
     }
 
-    public void cmdPart(List<String> parameters, int connId) {
+    /** Service PART command message
+     * The PART command removes the client from the given channel(s). On sending a successful PART command, the user will
+     * receive a PART message from the server for each channel they have been removed from. &lt;reason&gt; is the reason that
+     * the client has left the channel(s).
+     * Possible errors:
+     * ERR_NEEDMOREPARAMS - not enough parameters
+     * ERR_NOSUCHCHANNEL - the channel does not exist
+     * ERR_NOTONCHANNEL - user is not on the channel
+     * @param parameters &lt;channel&gt;{,&lt;channel&gt;} [&lt;reason&gt;]
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdPart(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NEEDMOREPARAMS, "PART :Not enough parameters");
             return;
@@ -202,7 +305,12 @@ public class IRCServer {
         }
     }
 
-    public void cmdNames(List<String> parameters, int connId) {
+    /** Service NAMES command message
+     * The NAMES command is used to view the nicknames joined to a channel
+     * @param parameters &lt;channel&gt;{,&lt;channel&gt;}
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdNames(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
             // list all users, not implemented yet
             return;
@@ -219,7 +327,13 @@ public class IRCServer {
         }
     }
 
-    public void cmdList(List<String> parameters, int connId) {
+    /** Service LIST command message
+     * The LIST command is used to get a list of channels along with some information about each channel.
+     * If no parameter is given all server's channels are listed
+     * @param parameters [&lt;channel&gt;{,&lt;channel&gt;}]
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdList(List<String> parameters, int connId) {
         List<String> channels;
         if (parameters.isEmpty()) {
             channels = channelManager.getChannels();
@@ -236,7 +350,18 @@ public class IRCServer {
         sendReply(connId, RPL_LISTEND, ":End of /LIST");
     }
 
-    public void cmdTopic(List<String> parameters, int connId) {
+    /** Service TOPIC command message
+     * The TOPIC command is used to change or view the topic of the given channel. If &lt;topic&gt; is not given, either
+     * RPL_TOPIC or RPL_NOTOPIC is returned specifying the current channel topic or lack of one. If &lt;topic&gt; is an empty
+     * string, the topic for the channel will be cleared.
+     * Possible errors:
+     * ERR_NEEDMOREPARAMS - not enough parameters
+     * ERR_NOTONCHANNEL - user tries to change topic but is not on that channel
+     * ERR_UNKNOWNERROR - topic string in wrong format
+     * @param parameters &lt;channel&gt; [&lt;topic&gt;]
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdTopic(List<String> parameters, int connId) {
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NEEDMOREPARAMS, "TOPIC :Not enough parameters");
             return;
