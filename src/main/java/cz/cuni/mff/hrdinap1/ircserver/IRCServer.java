@@ -29,7 +29,6 @@ public class IRCServer {
     }
 
     public void disconnect(int connId) {
-        // todo maybe pair with quit, kill,...
         connectionManager.removeHandler(connId);
         userManager.removeUser(connId);
         channelManager.removeUser(connId);
@@ -98,8 +97,6 @@ public class IRCServer {
         }
 
         userManager.setNickname(connId, nickname);
-
-        System.out.println("Paired connection " + connId + " to nickname " + nickname);
     }
 
     public void cmdUser(List<String> parameters, int connId) {
@@ -125,7 +122,6 @@ public class IRCServer {
 
         realname = realname.substring(1);
         userManager.setUserDetails(connId, username, hostname, servername, realname);
-        System.out.println("Paired connection " + connId + " to username " + username);
     }
 
     public void cmdJoin(List<String> parameters, int connId) {

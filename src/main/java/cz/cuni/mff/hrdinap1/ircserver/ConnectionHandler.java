@@ -41,8 +41,6 @@ public class ConnectionHandler implements Runnable {
     }
 
     private void processLine(String line) {
-        // todo add :nick cmd option
-
         List<String> words = Arrays.stream(line.split("\\s+")).toList();
         String cmd = words.getFirst().toUpperCase(Locale.ROOT);
 
@@ -71,12 +69,12 @@ public class ConnectionHandler implements Runnable {
             while ((line = reader.readLine()) != null) {
                 processLine(line);
             }
-            System.out.println("Disconnected! closing a connection");
+            System.out.println("Disconnected! closing a connection " + connId);
             server.disconnect(connId);
             socket.close();
             out = null;
         } catch (IOException e) {
-            System.out.println("Error! Closing a connection");
+            System.out.println("Error! Closing a connection " + connId);
             server.disconnect(connId);
             out = null;
         }

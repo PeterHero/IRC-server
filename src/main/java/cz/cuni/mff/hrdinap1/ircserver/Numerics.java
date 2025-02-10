@@ -12,7 +12,6 @@ public final class Numerics {
     public static final int ERR_UNKNOWNERROR = 400;
     public static final int ERR_NOSUCHNICK = 401;
     public static final int ERR_NOSUCHCHANNEL = 403;
-    public static final int ERR_CANNOTSENDTOCHAN = 404;
     public static final int ERR_NORECIPIENT = 411;
     public static final int ERR_NONICKNAMEGIVEN = 431;
     public static final int ERR_ERRONEUSNICKNAME = 432;

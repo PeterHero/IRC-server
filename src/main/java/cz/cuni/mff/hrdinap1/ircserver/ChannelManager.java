@@ -16,7 +16,6 @@ public class ChannelManager {
     private class Channel {
         private final Map<Integer, ChannelUser> users;
         String topic;
-        // todo no external messages mode
 
         public Channel() {
             this.users = new HashMap<>();
