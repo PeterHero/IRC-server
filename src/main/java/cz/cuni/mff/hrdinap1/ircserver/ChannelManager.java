@@ -57,6 +57,18 @@ public class ChannelManager {
             users.remove(connId);
         }
 
+        /** Check if user is operator
+         * @param connId id of the user's connection
+         * @return true if user is operator
+         */
+        public boolean isOperator(int connId) {
+            if (users.containsKey(connId)) {
+                return users.get(connId).isOperator;
+            } else {
+                return false;
+            }
+        }
+
         /** Give operator status to user
          * @param connId id of the user's connection
          */
@@ -137,6 +149,13 @@ public class ChannelManager {
         nameToChann.put(channel, newChannel);
     }
 
+    /** Remove channel
+     * @param channel channel name
+     */
+    private void removeChannel(String channel) {
+        nameToChann.remove(channel);
+    }
+
     /** Get list of channel names
      * @return list of channel names
      */
@@ -149,6 +168,13 @@ public class ChannelManager {
      * @return true if channel exists, else false
      */
     public boolean channelExists(String channel) { return nameToChann.containsKey(channel); }
+
+    /** Checks if user is channel operator
+     * @param connId id of the user's connection
+     * @param channel channel name
+     * @return true if user is channel operator
+     */
+    public boolean isChannelOperator(int connId, String channel) { return isUserInChannel(connId, channel) && nameToChann.get(channel).isOperator(connId); }
 
     /** Checks if user is in a channel
      * @param connId id of the user's connection
@@ -200,7 +226,11 @@ public class ChannelManager {
      */
     public void leave(int connId, String channel) {
         if (channelExists(channel)) {
-            getChannel(channel).quit(connId);
+            Channel ch = getChannel(channel);
+            ch.quit(connId);
+            if (ch.count() == 0) {
+                removeChannel(channel);
+            }
         }
     }
 

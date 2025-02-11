@@ -10,6 +10,7 @@ import static cz.cuni.mff.hrdinap1.ircserver.Numerics.*;
 public class IRCServer {
     public static final char channelPrefix = '#';
     public static final char publicChannelSymbol = '=';
+    public static final char channelOperatorPrefix = '@';
 
     private final ChannelManager channelManager;
     private final ConnectionManager connectionManager;
@@ -125,8 +126,14 @@ public class IRCServer {
      */
     private String getChannelUsers(String channel) {
         Set<Integer> connIds = channelManager.getChannelUsers(channel);
-        Set<String> nicknames = userManager.getNicknames(connIds);
-        return joinBy(nicknames.stream().toList(), " ", 0);
+        List<String> nicknames = new ArrayList<>();
+        for (int connId: connIds) {
+            boolean isOperator = channelManager.isChannelOperator(connId, channel);
+            String nickname = userManager.getNickname(connId);
+            String fullNickname = isOperator ? channelOperatorPrefix + nickname : nickname;
+            nicknames.add(fullNickname);
+        }
+        return joinBy(nicknames, " ", 0);
     }
 
     /** Service NICK command message
@@ -393,6 +400,58 @@ public class IRCServer {
             } else {
                 sendReply(connId, ERR_UNKNOWNERROR, "TOPIC :missing colon for trailing parameter");
             }
+        }
+    }
+
+    /** Service KICK command message
+     * The KICK command can be used to request the forced removal of a user from a channel. It causes the &lt;user&gt; to be
+     * removed from the &lt;channel&gt; by force.
+     * Possible errors:
+     * ERR_NEEDMOREPARAMS - not enough parameters
+     * ERR_NOSUCHCHANNEL - the channel does not exist
+     * ERR_NOTONCHANNEL - not in channel, cannot perform this action
+     * ERR_CHANOPRIVSNEEDED - user is not a channel operator
+     * ERR_USERNOTINCHANNEL - the target user is not on the channel
+     * @param parameters &lt;channel&gt; &lt;user&gt; *( "," &lt;user&gt; ) [&lt;comment&gt;]
+     * @param connId id of the user's connection
+     */
+    public synchronized void cmdKick(List<String> parameters, int connId) {
+        if (parameters.size() < 2) {
+            sendReply(connId, ERR_NEEDMOREPARAMS, "KICK :Not enough parameters");
+            return;
+        }
+
+        String channel = parameters.getFirst();
+        List<String> users = splitBy(parameters.get(1), ",");
+        String reason = ":" + userManager.getNickname(connId);
+
+        if (parameters.size() > 2) {
+            reason = joinBy(parameters, " ", 2);
+        }
+
+        if (!channelManager.channelExists(channel)) {
+            sendReply(connId, ERR_NOSUCHCHANNEL, channel + " : No such channel");
+            return;
+        }
+
+        if (!channelManager.isUserInChannel(connId, channel)) {
+            sendReply(connId, ERR_NOTONCHANNEL, channel + " :You're not on that channel");
+            return;
+        }
+
+        if (!channelManager.isChannelOperator(connId, channel)) {
+            sendReply(connId, ERR_CHANOPRIVSNEEDED, channel + ":You're not channel operator");
+            return;
+        }
+
+        for (String user: users) {
+            if (!userManager.userIsRegistered(user) || !channelManager.isUserInChannel(userManager.getConnId(user), channel)) {
+                sendReply(connId, ERR_USERNOTINCHANNEL, user + " " + channel + " :They aren't on that channel");
+                continue;
+            }
+
+            sendMessage(channel, userManager.getNickname(connId), "KICK", channel + " " + user + " " + reason, true);
+            channelManager.leave(userManager.getConnId(user), channel);
         }
     }
 }

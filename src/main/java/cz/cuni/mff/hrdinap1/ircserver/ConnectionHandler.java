@@ -49,6 +49,8 @@ public class ConnectionHandler implements Runnable {
             server.cmdList(parameters, connId);
         } else if ("TOPIC".equals(cmd)) {
             server.cmdTopic(parameters, connId);
+        } else if ("KICK".equals(cmd)) {
+            server.cmdKick(parameters, connId);
         }
     }
 

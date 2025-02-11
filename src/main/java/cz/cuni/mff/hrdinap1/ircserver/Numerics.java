@@ -18,8 +18,10 @@ public final class Numerics {
     public static final int ERR_NONICKNAMEGIVEN = 431;
     public static final int ERR_ERRONEUSNICKNAME = 432;
     public static final int ERR_NICKNAMEINUSE = 433;
+    public static final int ERR_USERNOTINCHANNEL = 441;
     public static final int ERR_NOTONCHANNEL = 442;
     public static final int ERR_NEEDMOREPARAMS = 461;
     public static final int ERR_ALREADYREGISTERED = 462;
     public static final int ERR_BADCHANMASK = 476;
+    public static final int ERR_CHANOPRIVSNEEDED = 482;
 }
