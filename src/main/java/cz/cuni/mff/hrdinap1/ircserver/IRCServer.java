@@ -231,6 +231,11 @@ public class IRCServer {
      * @param connId id of the user's connection
      */
     public synchronized void cmdJoin(List<String> parameters, int connId) {
+        if (!userManager.userIsRegistered(connId)) {
+            sendReply(connId, ERR_NOTREGISTERED, ":You have not registered");
+            return;
+        }
+
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NEEDMOREPARAMS, "JOIN :Not enough parameters");
             return;
@@ -267,6 +272,11 @@ public class IRCServer {
      * @param connId id of the user's connection
      */
     public synchronized void cmdPrivmsg(List<String> parameters, int connId) {
+        if (!userManager.userIsRegistered(connId)) {
+            sendReply(connId, ERR_NOTREGISTERED, ":You have not registered");
+            return;
+        }
+
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NORECIPIENT, ":No recipient given (PRIVMSG)");
             return;
@@ -299,6 +309,11 @@ public class IRCServer {
      * @param connId id of the user's connection
      */
     public synchronized void cmdPart(List<String> parameters, int connId) {
+        if (!userManager.userIsRegistered(connId)) {
+            sendReply(connId, ERR_NOTREGISTERED, ":You have not registered");
+            return;
+        }
+
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NEEDMOREPARAMS, "PART :Not enough parameters");
             return;
@@ -385,6 +400,11 @@ public class IRCServer {
      * @param connId id of the user's connection
      */
     public synchronized void cmdTopic(List<String> parameters, int connId) {
+        if (!userManager.userIsRegistered(connId)) {
+            sendReply(connId, ERR_NOTREGISTERED, ":You have not registered");
+            return;
+        }
+
         if (parameters.isEmpty()) {
             sendReply(connId, ERR_NEEDMOREPARAMS, "TOPIC :Not enough parameters");
             return;
@@ -432,6 +452,11 @@ public class IRCServer {
      * @param connId id of the user's connection
      */
     public synchronized void cmdKick(List<String> parameters, int connId) {
+        if (!userManager.userIsRegistered(connId)) {
+            sendReply(connId, ERR_NOTREGISTERED, ":You have not registered");
+            return;
+        }
+
         if (parameters.size() < 2) {
             sendReply(connId, ERR_NEEDMOREPARAMS, "KICK :Not enough parameters");
             return;
