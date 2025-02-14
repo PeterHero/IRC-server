@@ -28,6 +28,19 @@ public class IRCServer {
         this.serverName = serverName;
     }
 
+    /** Special server constructor for unit tests
+     * @param serverName name used in server responses
+     * @param channelManager channel manager to use
+     * @param connectionManager connection manager to use
+     * @param userManager user manager to use
+     */
+    public IRCServer(String serverName, ChannelManager channelManager, ConnectionManager connectionManager, UserManager userManager) {
+        this.channelManager = channelManager;
+        this.connectionManager = connectionManager;
+        this.userManager = userManager;
+        this.serverName = serverName;
+    }
+
     /** Factory method creating ConnectionHandler
      * @param socket socket with the connected user
      * @return new connection handler servicing the socket and connection
@@ -89,10 +102,13 @@ public class IRCServer {
      */
     private void sendMessage(String target, String source, String command, String parameters, boolean includeSender) {
         if (target.charAt(0) == channelPrefix) {
-            assert channelManager.channelExists(target);
-            for (int userConnId: channelManager.getChannelUsers(target)) {
-                if (includeSender || userConnId != userManager.getConnId(source)) {
-                    sendMessage(userConnId, source, command, parameters);
+            if (channelManager.channelExists(target)) {
+                if (channelManager.channelExists(target)) {
+                    for (int userConnId : channelManager.getChannelUsers(target)) {
+                        if (includeSender || userConnId != userManager.getConnId(source)) {
+                            sendMessage(userConnId, source, command, parameters);
+                        }
+                    }
                 }
             }
         } else {

@@ -239,8 +239,8 @@ public class ChannelManager {
      * @param connId id of the user's connection
      */
     public void removeUser(int connId) {
-        for (Channel channel: nameToChann.values()) {
-            channel.quit(connId);
+        for (String channel: nameToChann.keySet()) {
+            leave(connId, channel);
         }
     }
 
