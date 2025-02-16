@@ -218,7 +218,7 @@ public class IRCServer {
     }
 
     /** Service JOIN command message
-     * Joins user to channel. If the channel does not exist it is created with the user as an operator
+     * Joins user to channel(s). If the channel does not exist it is created with the user as an operator
      * Possible errors:
      * ERR_NEEDMOREPARAMS - not enough parameters were given
      * ERR_BADCHANMASK - channel name in incorrect format
